@@ -1,0 +1,108 @@
+#!/bin/bash
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Marc Gandar
+#
+# qovi-tui-setkey -- renseigne la cle PRIVEE du site dans /etc/qovi-tui.conf
+# (0600, proprietaire qovi-tui) et (re)demarre le service.
+#
+#   sudo qovi-tui-setkey                        cle demandee au clavier (collee)
+#   sudo qovi-tui-setkey --file ~/ma-cle.txt    cle lue dans un fichier, que
+#                                               l'outil propose ensuite d'effacer
+#   option --api https://tst.qovi.ch/RST        serveur de test de Qovi
+#
+# La cle n'apparait ni a l'ecran, ni dans l'historique, ni dans la liste des
+# processus. Espaces et retours a la ligne sont ignores ; une cle collee deux
+# fois de suite est reconnue.
+set -u
+CONF=/etc/qovi-tui.conf
+API=""
+FILE=""
+USAGE="usage : qovi-tui-setkey [--file <fichier>] [--api https://...]"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --api)  [ $# -ge 2 ] || { echo "$USAGE"; exit 4; }; API="$2"; shift 2 ;;
+        --file) [ $# -ge 2 ] || { echo "$USAGE"; exit 4; }; FILE="$2"; shift 2 ;;
+        -h|--help) sed -n '5,15p' "$0"; exit 0 ;;
+        *) echo "$USAGE"; exit 4 ;;
+    esac
+done
+[ "$(id -u)" = 0 ] || { echo "a lancer avec sudo"; exit 1; }
+if [ -n "$API" ] && ! [[ $API =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?(/[A-Za-z0-9._/-]*)?$ ]]; then
+    echo "--api : adresse https:// invalide"; exit 4
+fi
+getent passwd qovi-tui >/dev/null || { echo "utilisateur qovi-tui absent : reinstallez le paquet qovi-tui"; exit 3; }
+
+if [ -n "$FILE" ]; then
+    # fichier ordinaire uniquement (pas de lien, pas de peripherique), petit
+    if [ ! -e "$FILE" ] && [ ! -L "$FILE" ]; then echo "--file : $FILE introuvable"; exit 4; fi
+    if [ -L "$FILE" ] || [ ! -f "$FILE" ]; then echo "--file : $FILE n'est pas un fichier ordinaire"; exit 4; fi
+    if [ "$(stat -c %s "$FILE")" -gt 4096 ]; then echo "--file : $FILE est trop gros pour une cle"; exit 4; fi
+    K=$(head -c 4096 "$FILE")
+else
+    echo "Si sudo vient de demander un mot de passe, c'etait celui de votre compte."
+    read -rs -p "Maintenant, colle la cle PRIVEE du site (64 caracteres hexadecimaux, rien ne s'affiche) puis Entree : " K < /dev/tty
+    echo
+fi
+K=${K//[[:space:]]/}
+if [ ${#K} -eq 128 ] && [ "${K:0:64}" = "${K:64:64}" ]; then
+    K=${K:0:64}; echo "(cle collee deux fois : prise une seule fois)"
+fi
+if ! [[ $K =~ ^[0-9a-fA-F]{64}$ ]]; then
+    echo "REFUSE : il faut 64 caracteres hexadecimaux, recu ${#K} caracteres. Rien n'est modifie."
+    [ -z "$FILE" ] && echo "Si le collage est capricieux (bureau a distance...), enregistrez la cle dans un fichier et utilisez --file."
+    unset K; exit 3
+fi
+K=${K,,}
+
+umask 077
+TMP=$(mktemp /etc/.qovi-tui.conf.XXXXXX) || exit 1
+trap 'rm -f "$TMP"' EXIT
+# recopie la configuration existante sans ses lignes prv_us (et api_url si --api)
+if [ -f "$CONF" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+        t=${line#"${line%%[![:space:]]*}"}
+        case "$t" in
+            prv_us*=*) continue ;;
+            api_url*=*) [ -n "$API" ] && continue ;;
+        esac
+        printf '%s\n' "$line"
+    done < "$CONF" > "$TMP"
+fi
+[ -n "$API" ] && printf 'api_url  = %s\n' "$API" >> "$TMP"
+printf 'prv_us   = %s\n' "$K" >> "$TMP"          # printf integre : pas de processus
+ID=$(printf '%s' "qovi-sit-pub-v1:$K" | sha256sum | cut -c1-12)
+unset K
+chown qovi-tui:qovi-tui "$TMP" && chmod 600 "$TMP" && mv -f "$TMP" "$CONF" || { echo "ecriture de $CONF impossible"; exit 1; }
+trap - EXIT
+echo "cle enregistree dans $CONF (identifiant PUBLIC du site : ${ID}…)"
+# serveur Qovi effectivement utilise (une cle de test est refusee par la production)
+SRV=https://qovi.ch/RST
+while IFS= read -r line; do
+    t=${line#"${line%%[![:space:]]*}"}
+    case "$t" in api_url*=*) v=${t#*=}; v=${v#"${v%%[![:space:]]*}"}; SRV=${v%"${v##*[![:space:]]}"} ;; esac
+done < "$CONF"
+case "$SRV" in
+    https://qovi.ch/*) echo "serveur Qovi : $SRV (production)" ;;
+    *)                 echo "serveur Qovi : $SRV (autre que la production)" ;;
+esac
+if [ -n "$FILE" ]; then
+    read -r -p "Effacer definitivement le fichier $FILE, qui contient la cle ? [o/N] " R < /dev/tty
+    case "$R" in
+        o|O|oui|y|Y) shred -u "$FILE" && echo "fichier efface" ;;
+        *) echo "ATTENTION : $FILE contient toujours la cle ; effacez-le des que possible (shred -u)" ;;
+    esac
+fi
+
+if [ -d /run/systemd/system ]; then
+    systemctl enable qovi-tui.service >/dev/null 2>&1
+    systemctl restart qovi-tui.service
+    sleep 1
+    if systemctl is-active --quiet qovi-tui.service; then
+        echo "service qovi-tui demarre"
+    else
+        echo "le service ne demarre pas : journalctl -u qovi-tui -n 20"; exit 1
+    fi
+else
+    echo "systemd absent : lancez /usr/sbin/qovi-tuid $CONF vous-meme"
+fi

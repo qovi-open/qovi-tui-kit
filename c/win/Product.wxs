@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: MPL-2.0 | Copyright (c) 2026 Marc Gandar
+     Product.wxs - paquet Windows de Qovi TuI (WiX 5).
+     Installe dans Program Files\Qovi\TuI : qovi-tuid.exe (service) et qovi-tui.exe
+     (client, ajoute au PATH). Service « QoviTuI » sous le compte virtuel
+     « NT SERVICE\QoviTuI » (sans privilege, sans mot de passe), demarrage
+     automatique ; sans cle il s'arrete aussitot (code 3) : « qovi-tuid setkey »
+     pose la cle dans ProgramData\Qovi\TuI et le demarre.
+     La configuration (et donc la cle) n'est JAMAIS dans ce paquet.
+     UpgradeCode FIXE : ne jamais le changer. Variables : Ver, Src.
+     Extension : WixToolset.UI.wixext (assistant en francais, -culture fr-FR). -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="Qovi TuI" Manufacturer="Qovi" Version="$(var.Ver)"
+           UpgradeCode="FB39B411-CE4A-441A-BEC5-CB802B4E7A2C" Scope="perMachine" Language="1036">
+    <MajorUpgrade DowngradeErrorMessage="Une version plus récente de Qovi TuI est déjà installée." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- assistant minimal : licence, installation, ecran de fin -->
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.Src)\License.rtf" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="QoviFolder" Name="Qovi">
+        <Directory Id="INSTALLFOLDER" Name="TuI">
+
+          <Component Id="TuiService">
+            <File Id="QoviTuid" Source="$(var.Src)\qovi-tuid.exe" KeyPath="yes" />
+            <ServiceInstall Id="TuiSvc" Name="QoviTuI" DisplayName="Qovi TuI"
+                            Description="Authentification Qovi pour applications locales (127.0.0.1). Cle du site : qovi-tuid setkey"
+                            Type="ownProcess" Start="auto" ErrorControl="normal"
+                            Account="NT SERVICE\QoviTuI" Arguments="--service" Vital="yes" />
+            <ServiceControl Id="TuiSvcCtl" Name="QoviTuI" Start="install" Stop="both" Remove="uninstall" Wait="no" />
+          </Component>
+
+          <Component Id="TuiClient">
+            <File Id="QoviTui" Source="$(var.Src)\qovi-tui.exe" KeyPath="yes" />
+            <Environment Id="TuiPath" Name="PATH" Value="[INSTALLFOLDER]" Permanent="no"
+                         Part="last" Action="set" System="yes" />
+          </Component>
+
+          <!-- un composant par fichier non versionne (GUID automatique de WiX) -->
+          <Component Id="TuiReadme"><File Id="Readme" Source="$(var.Src)\README.html" Name="README.html" KeyPath="yes" /></Component>
+          <Component Id="TuiLicense"><File Id="License" Source="$(var.Src)\LICENSE" Name="LICENSE.txt" KeyPath="yes" /></Component>
+          <Component Id="TuiNotice"><File Id="Notice" Source="$(var.Src)\NOTICE" Name="NOTICE.txt" KeyPath="yes" /></Component>
+          <Component Id="TuiLicenseOpenSSL"><File Id="LicenseOpenSSL" Source="$(var.Src)\LICENSE-OpenSSL.txt" Name="LICENSE-OpenSSL.txt" KeyPath="yes" /></Component>
+          <Component Id="TuiConfExample"><File Id="ConfExample" Source="$(var.Src)\qovi-tui.conf.example" Name="qovi-tui.conf.example" KeyPath="yes" /></Component>
+
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+  </Package>
+</Wix>

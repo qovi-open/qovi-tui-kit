@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# tui — client TuI en bash (TOUT langage peut appeler TuI : ici ~5 lignes).
+# Usage : ./tui <port> <email> [sujet]
+#   ex  : ./tui 7777 info@qovi.ch "Connexion au serveur"
+port="${1:?usage: tui <port> <email> [sujet]}"
+edr="${2:?usage: tui <port> <email> [sujet]}"
+subj="${3:-Demande shell}"
+reponse=$(printf '%s|%s\n' "$edr" "$subj" | nc -q 130 127.0.0.1 "$port")
+echo "$reponse"
+case "$reponse" in
+  Go*) echo "OK authentifie"; exit 0 ;;
+  *)   echo "refuse";         exit 1 ;;
+esac

@@ -1,0 +1,13 @@
+#!/bin/sh
+# SPDX-License-Identifier: MPL-2.0
+# qovi-tui postrm : a la purge, la configuration (et donc la cle) est effacee.
+set -e
+case "$1" in
+purge)
+    if [ -e /etc/qovi-tui.conf ]; then
+        if command -v shred >/dev/null 2>&1; then shred -u /etc/qovi-tui.conf; else rm -f /etc/qovi-tui.conf; fi
+    fi
+    ;;
+esac
+if [ -d /run/systemd/system ]; then systemctl daemon-reload >/dev/null 2>&1 || true; fi
+exit 0

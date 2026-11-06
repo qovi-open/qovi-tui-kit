@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MPL-2.0
+# qovi-tui.conf.example (Windows) -- EXEMPLE de configuration du service Qovi TuI
+#
+# Ne copiez pas ce fichier et ne collez pas la cle a la main : dans une console
+# ADMINISTRATEUR, lancez
+#     qovi-tuid setkey                                   (production)
+#     qovi-tuid setkey --api https://tst.qovi.ch/RST     (serveur de test de Qovi)
+# Il ecrit la vraie configuration dans C:\ProgramData\Qovi\TuI\qovi-tui.conf,
+# lisible seulement par le service, SYSTEM et les administrateurs, puis
+# (re)demarre le service.
+#
+# La cle privee ne quitte jamais cette machine : elle sert seulement a SIGNER
+# les requetes vers Qovi et a VERIFIER ses reponses.
+#
+# Reglages facultatifs, a ajouter dans C:\ProgramData\Qovi\TuI\qovi-tui.conf
+# (editeur lance en administrateur), puis : sc stop QoviTuI  et  sc start QoviTuI
+# ch4_port = 6404
+# port     = 7777          # le service n'ecoute QUE sur 127.0.0.1
+# timeout  = 120           # attente du vote mobile, 10 a 130 s
+#
+# Journal du service : C:\ProgramData\Qovi\TuI\logs\qovi-tui.log

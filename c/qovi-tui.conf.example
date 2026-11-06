@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MPL-2.0
+# qovi-tui.conf -- configuration du service TuI (meme format pour le C et le Python)
+#
+# 1. Copiez ce fichier en  /etc/qovi-tui.conf  et collez la cle PRIVEE du site.
+# 2. Protegez-le : seul l'utilisateur du service doit pouvoir le lire.
+#      Linux   : chown qovi-tui /etc/qovi-tui.conf ; chmod 600 /etc/qovi-tui.conf
+#      Windows : n'utilisez pas ce fichier, lancez « qovi-tuid setkey » (voir README)
+# 3. Ne le committez JAMAIS.
+#
+# La cle privee ne quitte jamais cette machine : elle sert seulement a SIGNER
+# les requetes vers Qovi et a VERIFIER ses reponses. Aucune cle publique ici.
+
+prv_us   = COLLEZ_LA_CLE_PRIVEE_DU_SITE_64_HEXA
+
+# Valeurs par defaut (a decommenter pour changer)
+# api_url  = https://qovi.ch/RST
+# ch4_port = 6404
+# port     = 7777          # le service n'ecoute QUE sur 127.0.0.1
+# timeout  = 120           # attente du vote mobile, 10 a 130 s
+# log_file = /var/log/qovi-tui/tui.log   # sinon : sortie standard (journald)

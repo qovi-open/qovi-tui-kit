@@ -1,0 +1,11 @@
+# secrets et produits de compilation : jamais dans git
+/qovi-tui.conf
+/t_unit
+/qovi-tuid
+/qovi-tui
+*.exe
+*.o
+*.tmp
+*.log
+/dist/
+/dist-win/

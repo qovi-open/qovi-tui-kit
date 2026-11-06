@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: MPL-2.0 | Copyright (c) 2026 Marc Gandar -->
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qovi TuI — authentifier une application sans interface</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.7; }
+header { background: #0f172a; color: #fff; padding: 32px 48px; }
+header h1 { font-size: 1.9rem; margin-bottom: 8px; }
+header p { color: #94a3b8; font-size: 1.05rem; }
+.container { max-width: 880px; margin: 0 auto; padding: 40px 24px; }
+h2 { font-size: 1.4rem; color: #0f172a; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+h3 { font-size: 1.1rem; color: #334155; margin: 24px 0 10px; }
+p { color: #475569; margin-bottom: 12px; }
+code { background: #f1f5f9; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: .9rem; font-family: monospace; }
+pre { background: #0f172a; color: #e2e8f0; padding: 20px; border-radius: 8px; overflow-x: auto; margin: 12px 0; font-size: .88rem; line-height: 1.55; }
+pre .c { color: #64748b; }
+pre .k { color: #7dd3fc; }
+pre .s { color: #86efac; }
+.file-tree { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; font-family: monospace; font-size: .9rem; line-height: 1.9; white-space: pre; overflow-x: auto; }
+.file-tree .dir { color: #0369a1; font-weight: bold; }
+.file-tree .note { color: #94a3b8; }
+.box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 16px 0; }
+.box-info { border-color: #7dd3fc; background: #eff6ff; }
+.box-ok { border-color: #4ade80; background: #f0fdf4; }
+.box-warn { border-color: #fbbf24; background: #fffbeb; }
+.box-sec { border: 2px solid #0F3ECE; background: #F3F6FF; }
+.step { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+.step-num { background: #0369a1; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; font-size: .9rem; }
+.step-content { flex: 1; min-width: 0; }
+.step-content strong { color: #0f172a; }
+ul, ol { margin-left: 22px; color: #475569; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+.flow { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; font-family: monospace; font-size: .82rem; line-height: 1.8; white-space: pre; overflow-x: auto; color: #334155; }
+footer { background: #0f172a; color: #64748b; text-align: center; padding: 24px; margin-top: 60px; font-size: .9rem; }
+footer a { color: #7dd3fc; text-decoration: none; }
+.pill { display:inline-block; background:#e0f2fe; color:#0369a1; padding:2px 10px; border-radius:12px; font-size:.78rem; font-weight:bold; }
+.pill-warn { background:#fef3c7; color:#92400e; }
+/* onglets sans JavaScript */
+.tabs { margin-top: 16px; }
+.tabs > input { display: none; }
+.tabs > label { display: inline-block; padding: 10px 26px; margin-right: 4px; border: 1px solid #e2e8f0; border-bottom: none; border-radius: 8px 8px 0 0; background: #e2e8f0; color: #334155; font-weight: bold; cursor: pointer; }
+.tabs > input:checked + label { background: #fff; color: #0369a1; }
+.tabs > .panel { display: none; background: #fff; border: 1px solid #e2e8f0; border-radius: 0 8px 8px 8px; padding: 8px 24px 16px; }
+#tab-lin:checked ~ #panel-lin, #tab-win:checked ~ #panel-win, #tab-src:checked ~ #panel-src { display: block; }
+table { border-collapse: collapse; margin: 12px 0; width: 100%; }
+td, th { border: 1px solid #e2e8f0; padding: 6px 10px; text-align: left; font-size: .92rem; color: #475569; }
+th { background: #f1f5f9; color: #0f172a; }
+.os { font-size: 1rem; color: #0f172a; margin: 28px 0 8px; padding: 6px 12px; background: #f1f5f9; border-left: 4px solid #0369a1; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:2.2rem">⌨️</div>
+  <h1>Qovi TuI — authentifier une application sans interface</h1>
+  <p>Un script, un service, un backend, un objet connecté… même sans écran, il peut exiger une authentification forte, validée sur le mobile de la personne. <span class="pill">Linux · .deb</span> <span class="pill">C</span> <span class="pill">Python</span> <span class="pill">Windows · .msi</span></p>
+</header>
+
+<div class="container">
+
+<h2>L'idée</h2>
+<p>Votre application ne sait rien de la cryptographie ni de Qovi. Elle demande simplement : <strong>« cette personne confirme-t-elle ? »</strong> La personne reçoit la demande sur son mobile, avec la raison que vous indiquez, et accepte ou refuse. Votre application reçoit le verdict, confirmé par Qovi.</p>
+
+<h3>Deux rôles distincts</h3>
+<ul>
+  <li><strong>Le service <code>qovi-tuid</code></strong> tourne en permanence sur la machine. Il détient la <strong>clé privée de votre site</strong>, dialogue avec Qovi et n'écoute que sur la machine elle-même (<code>127.0.0.1</code>).</li>
+  <li><strong>Le client <code>qovi-tui</code></strong> est appelé par votre application. Il ne connaît <strong>aucune clé</strong> : il transmet l'adresse à authentifier et rend le verdict.</li>
+</ul>
+<div class="box box-info">La clé privée n'est lisible que par le service. Votre application, vos scripts et vos utilisateurs n'y ont jamais accès.</div>
+
+<h2>Ce qu'il vous faut</h2>
+<div class="step"><div class="step-num">1</div><div class="step-content">Une adresse e-mail dédiée au site, par exemple <code>ch.qovi@votredomaine.com</code> (le préfixe <code>ch.qovi</code> évite tout conflit), sur laquelle l'app <strong>Qovi</strong> est appairée.</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-content">Connectez-vous sur <a href="https://qovi.ch">qovi.ch</a> avec cette adresse : la <strong>clé privée de votre site</strong> (64 caractères hexadécimaux) y est affichée, prête à copier. Gardez-la dans votre trousseau ; elle ne se transmet à personne.</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-content">Les personnes à authentifier ont l'app <strong>Qovi</strong> sur leur mobile, appairée à leur adresse.</div></div>
+
+<h2>Installer</h2>
+<div class="tabs">
+  <input type="radio" name="t" id="tab-lin" checked><label for="tab-lin">🐧 Linux (.deb)</label>
+  <input type="radio" name="t" id="tab-win"><label for="tab-win">🪟 Windows</label>
+  <input type="radio" name="t" id="tab-src"><label for="tab-src">🛠️ Depuis les sources</label>
+
+  <div class="panel" id="panel-lin">
+    <p class="os">Debian 12 ou 13, Ubuntu 22.04 ou plus récent (amd64)</p>
+    <div class="step"><div class="step-num">1</div><div class="step-content"><strong>Téléchargez</strong> le paquet <a href="https://qovi.ch/awp/kits/qovi-tui.deb">qovi-tui.deb</a> ; il arrive en général dans le dossier <code>Téléchargements</code>.<br>
+    Ce guide peut être lu hors ligne : double-cliquez sur le fichier <code>qovi-tui-kit-README.html</code> dans votre explorateur de fichiers (le panneau « Téléchargements » de Firefox n'affiche que ce que Firefox a lui-même téléchargé).</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-content"><strong>Installez-le</strong> dans un terminal. Votre mot de passe vous est demandé.
+<pre>cd ~/Téléchargements
+sudo apt install ./qovi-tui.deb</pre>
+    <div class="box box-warn" style="margin:8px 0">Le fichier <strong>ne se lance pas</strong> (<code>./qovi-tui.deb</code> seul provoque une erreur) : <strong>il s'installe</strong> avec la commande ci-dessus. Le <code>./</code> placé après <code>apt install</code> indique un fichier du dossier courant. Inutile de changer ses droits.</div>
+    Une note peut s'afficher : <em>« N: Le téléchargement est effectué hors bac à sable en tant que root, car le fichier … n'est pas accessible par l'utilisateur « _apt ». … (13: Permission non accordée) »</em>. Elle est <strong>sans conséquence</strong> : l'installation continue normalement.<br>
+    L'installation crée l'utilisateur système <code>qovi-tui</code>, le fichier <code>/etc/qovi-tui.conf</code> (lisible par lui seul) et le service <code>qovi-tui</code>, qui attend votre clé.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-content"><strong>Renseignez la clé privée du site</strong>, de l'une de ces deux façons.
+    <p style="margin-top:8px"><strong>a) En la collant</strong> — tapez la commande seule :</p>
+<pre>sudo qovi-tui-setkey</pre>
+    <p>Deux questions se suivent : <strong>d'abord</strong> le mot de passe de <em>votre compte</em> (celui de <code>sudo</code>), <strong>ensuite seulement</strong> la clé. À la seconde question, collez la clé (dans un terminal : <strong>Ctrl+Maj+V</strong>, ou sélection puis <strong>clic du milieu</strong>) et appuyez sur Entrée. <strong>Rien ne s'affiche, c'est voulu.</strong></p>
+    <p><strong>b) Depuis un fichier</strong> — recommandé si le copier-coller est capricieux (bureau à distance…) : enregistrez la clé seule dans un fichier, puis :</p>
+<pre>sudo qovi-tui-setkey --file ~/ma-cle.txt</pre>
+    <p>L'outil lit la clé, l'enregistre, puis <strong>propose d'effacer le fichier</strong> : répondez <code>o</code>. Une clé privée ne doit pas rester dans un fichier ordinaire.</p>
+    <p>L'outil affiche à la fin le <strong>serveur Qovi utilisé</strong> : la production (<code>https://qovi.ch/RST</code>) par défaut. Pour le serveur de <strong>test</strong> de Qovi, ajoutez <code>--api https://tst.qovi.ch/RST</code> à la commande : une clé de test est refusée par la production.</p>
+    <p>Les espaces et retours à la ligne en trop sont ignorés. Une clé incomplète est refusée sans rien modifier. En cas de succès, l'outil démarre le service et affiche l'<em>identifiant public</em> du site, qui permet de vérifier quelle clé est en place sans rien dévoiler.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-content"><strong>Vérifiez</strong> que le service tourne :
+<pre>systemctl is-active qovi-tui</pre>
+    La réponse doit être <code>active</code>. Si elle est <code>inactive</code>, la clé n'est pas encore en place : refaites l'étape 3.</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-content"><strong>Premier essai</strong>, téléphone en main :
+<pre>qovi-tui login --edr ch.qovi@votredomaine.com --subj "Mon premier essai"</pre>
+    Le mobile affiche la demande avec la raison ; vous acceptez ; le terminal affiche <code>OK authentifie …</code>.</div></div>
+    <div class="box box-ok">C'est tout. Le service redémarre tout seul avec la machine.</div>
+  </div>
+
+  <div class="panel" id="panel-win">
+    <p class="os">Windows 10 / 11 (64 bits)</p>
+    <div class="step"><div class="step-num">1</div><div class="step-content"><strong>Téléchargez</strong> <a href="https://qovi.ch/awp/kits/qovi-tui.msi">qovi-tui.msi</a> et <strong>double-cliquez</strong> dessus. Windows demande l'autorisation d'installer (compte administrateur).<br>
+    Le paquet n'est pas encore signé : si Windows SmartScreen affiche « Windows a protégé votre ordinateur », cliquez sur <em>Informations complémentaires</em> puis <em>Exécuter quand même</em>.<br>
+    L'assistant affiche la licence : cochez <em>J'accepte</em>, cliquez sur <em>Installer</em> et attendez l'écran final, puis <em>Terminer</em>.<br>
+    L'installation place <code>qovi-tuid.exe</code> (le service) et <code>qovi-tui.exe</code> (le client) dans <code>C:\Program Files\Qovi\TuI</code>, ajoute ce dossier au PATH et crée le service Windows <strong>Qovi TuI</strong>, qui attend votre clé.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-content"><strong>Ouvrez une console administrateur</strong> : clic droit sur le bouton Démarrer, puis <em>Terminal (administrateur)</em>. Ouvrez-la <strong>après</strong> l'installation, pour qu'elle connaisse le nouveau PATH.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-content"><strong>Renseignez la clé privée du site</strong>, de l'une de ces deux façons :
+<pre>qovi-tuid setkey</pre>
+    collez la clé quand elle est demandée (clic droit ou Ctrl+V) puis Entrée — <strong>rien ne s'affiche, c'est voulu</strong> ; ou, depuis un fichier contenant la clé seule :
+<pre>qovi-tuid setkey --file C:\Users\vous\ma-cle.txt</pre>
+    l'outil propose ensuite d'effacer le fichier : répondez <code>o</code>.<br>
+    La clé est enregistrée dans <code>C:\ProgramData\Qovi\TuI\qovi-tui.conf</code>, lisible seulement par le service, SYSTEM et les administrateurs. L'outil affiche l'identifiant public du site et le serveur Qovi utilisé, puis démarre le service. Sans <code>--api</code>, c'est la <strong>production</strong> (<code>https://qovi.ch/RST</code>).</div></div>
+    <div class="box box-warn"><strong>Clé d'un site du serveur de TEST de Qovi ?</strong> Ajoutez <code>--api https://tst.qovi.ch/RST</code> :
+<pre>qovi-tuid setkey --api https://tst.qovi.ch/RST</pre>
+    Sinon l'essai répond « clé du site refusée par Qovi (serveur https://qovi.ch/RST, production) » : refaites simplement <code>setkey</code> avec <code>--api</code>.</div>
+    <div class="step"><div class="step-num">4</div><div class="step-content"><strong>Vérifiez</strong> que le service tourne (dans n'importe quelle console) :
+<pre>sc query QoviTuI</pre>
+    La ligne <code>STATE</code> doit indiquer <code>RUNNING</code>. Sinon, la clé n'est pas encore en place : refaites l'étape 3.</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-content"><strong>Premier essai</strong>, dans une console ordinaire, téléphone en main :
+<pre>qovi-tui login --edr ch.qovi@votredomaine.com --subj "Mon premier essai"</pre></div></div>
+    <div class="box box-ok">C'est tout. Le service démarre tout seul avec Windows.</div>
+  </div>
+
+  <div class="panel" id="panel-src">
+    <p class="os">⚙️ C (Linux)</p>
+    <pre>sudo apt install build-essential libssl-dev
+cd c
+make            # qovi-tuid (service) et qovi-tui (client)
+make test       # tests sans réseau ni téléphone (python3-cryptography, openssl)
+make deb        # le même paquet que ci-dessus, dans dist/</pre>
+    <p>Pour un essai sans installation, le service lit la clé dans la variable <code>QOVI_PRV_US</code> ou dans un fichier de configuration (même format que <code>/etc/qovi-tui.conf</code>, voir <code>qovi-tui.conf.example</code>), puis :</p>
+    <pre>./qovi-tuid ma.conf ch.qovi@votredomaine.com "Essai direct"</pre>
+
+    <p class="os">🐍 Python (Linux, Windows)</p>
+    <p>Service de référence, lisible en quelques pages : une demande à la fois. Pour la production, préférez le paquet.</p>
+    <pre>sudo apt install python3-cryptography      # ailleurs : pip install cryptography
+cd python
+python3 _tuip.py                           # service sur 127.0.0.1:7777
+python3 _tuip.py ch.qovi@votredomaine.com "Essai direct"</pre>
+    <p>La clé est lue dans <code>QOVI_PRV_US</code> ou dans <code>/etc/qovi-tui.conf</code> (ligne <code>prv_us = …</code>, fichier en <code>chmod 600</code>) ; elle n'est jamais écrite dans le code.</p>
+  </div>
+</div>
+
+<h2>Utiliser TuI depuis votre application</h2>
+<p>Le plus simple : appeler le client <code>qovi-tui</code>, dans n'importe quel langage.</p>
+<pre>qovi-tui login --edr &lt;adresse&gt; [--subj &lt;raison&gt;] [--json] [--port &lt;port&gt;]</pre>
+<table>
+  <tr><th>Code de sortie</th><th>Signification</th></tr>
+  <tr><td>0</td><td>accepté — l'identité est confirmée par Qovi</td></tr>
+  <tr><td>1</td><td>refusé (par la personne, ou adresse inconnue)</td></tr>
+  <tr><td>2</td><td>pas de vote dans le délai (130 s au plus)</td></tr>
+  <tr><td>3</td><td>erreur (service arrêté, réseau, configuration…)</td></tr>
+  <tr><td>4</td><td>mauvaise utilisation de la commande</td></tr>
+</table>
+<p>Avec <code>--json</code>, une ligne JSON par événement, pour suivre l'attente en direct :</p>
+<pre>{"ev":"sent"}                                    <span class="c"># demande partie</span>
+{"ev":"wait","t":"demande envoyee au mobile…"}   <span class="c"># sur le mobile</span>
+{"ev":"go","edr":"ch.qovi@votredomaine.com","t":"accepte"}
+<span class="c"># ou une ligne finale : {"ev":"ko",…}  {"ev":"timeout",…}  {"ev":"error",…}</span></pre>
+
+<h3>Exemple en shell</h3>
+<pre>if qovi-tui login --edr "$ADRESSE" --subj "Ouverture de la porte"; then
+    echo "autorisé"
+else
+    echo "refusé"
+fi</pre>
+
+<h3>Exemple en Python</h3>
+<pre>import json, subprocess
+p = subprocess.run(["qovi-tui", "login", "--edr", adresse, "--subj", raison, "--json"],
+                   capture_output=True, text=True, timeout=140)
+fin = json.loads(p.stdout.splitlines()[-1])
+autorise = (p.returncode == 0 and fin["ev"] == "go")</pre>
+
+<h3>Sans le client : le socket local</h3>
+<p>Toute application peut aussi parler directement au service, sur <code>127.0.0.1:7777</code>, en envoyant <strong>une ligne</strong> :</p>
+<ul>
+  <li><code>adresse|raison</code> → une ligne en retour : <code>Go …</code> ou <code>Ko …</code> ;</li>
+  <li><code>{"edr":"…","subj":"…"}</code> → les lignes JSON ci-dessus.</li>
+</ul>
+<p>Le script <code>tui</code> du kit (5 lignes de shell) en est un exemple.</p>
+
+<h2>Exploitation</h2>
+<h3>Linux</h3>
+<table>
+  <tr><th>Pour…</th><th>Commande</th></tr>
+  <tr><td>voir l'état du service</td><td><code>systemctl status qovi-tui</code></td></tr>
+  <tr><td>lire le journal (une ligne par demande, sans aucune clé)</td><td><code>journalctl -u qovi-tui -n 20</code></td></tr>
+  <tr><td>changer la clé du site</td><td><code>sudo qovi-tui-setkey</code> ou <code>sudo qovi-tui-setkey --file &lt;fichier&gt;</code> (le service redémarre)</td></tr>
+  <tr><td>utiliser le serveur de test de Qovi</td><td>ajouter <code>--api https://tst.qovi.ch/RST</code> à <code>qovi-tui-setkey</code></td></tr>
+  <tr><td>désinstaller (la configuration reste)</td><td><code>sudo apt remove qovi-tui</code></td></tr>
+  <tr><td>tout effacer, clé comprise</td><td><code>sudo apt purge qovi-tui</code></td></tr>
+</table>
+<h3>Windows</h3>
+<table>
+  <tr><th>Pour…</th><th>Commande ou emplacement</th></tr>
+  <tr><td>voir l'état du service</td><td><code>sc query QoviTuI</code> ou la console <em>Services</em> (« Qovi TuI »)</td></tr>
+  <tr><td>lire le journal (une ligne par demande, sans aucune clé)</td><td><code>C:\ProgramData\Qovi\TuI\logs\qovi-tui.log</code></td></tr>
+  <tr><td>changer la clé du site</td><td><code>qovi-tuid setkey</code> dans une console administrateur (le service redémarre)</td></tr>
+  <tr><td>désinstaller</td><td>Paramètres → Applications → <em>Qovi TuI</em> (la configuration reste)</td></tr>
+  <tr><td>tout effacer, clé comprise</td><td>après la désinstallation, supprimer le dossier <code>C:\ProgramData\Qovi\TuI</code></td></tr>
+</table>
+<p>Réglages facultatifs dans <code>/etc/qovi-tui.conf</code> (Windows : <code>C:\ProgramData\Qovi\TuI\qovi-tui.conf</code>) : <code>port</code> (7777), <code>timeout</code> (attente du vote, 10 à 130 s), <code>log_file</code>. Après modification : <code>sudo systemctl restart qovi-tui</code> (Windows : <code>sc stop QoviTuI</code> puis <code>sc start QoviTuI</code>, en administrateur).</p>
+
+<h2>Ce que TuI fait en coulisses</h2>
+<div class="flow">votre app ─► qovi-tui ─► qovi-tuid (127.0.0.1)
+                              │ 1. SiT_1_Edr : requête SIGNÉE (HTTPS)  ─► jeton de transaction
+                              │ 2. CH4 : TLS + AES-256-GCM            ─► demande sur le mobile, vote
+                              │ 3. SiT_3_End : requête SIGNÉE         ─► Qovi CONFIRME le verdict
+votre app ◄─ go / ko ◄────────┘</div>
+
+<div class="box box-sec">
+<h2 style="margin-top:0">Sécurité</h2>
+<ul>
+  <li><strong>La clé privée ne quitte jamais la machine</strong> : elle sert seulement à signer les requêtes et à vérifier les réponses de Qovi (HMAC-SHA256). Une réponse non signée ou falsifiée est rejetée.</li>
+  <li>Tous les échanges passent en <strong>TLS</strong>, certificat et nom du serveur vérifiés. Le canal du vote est en plus chiffré et authentifié (AES-256-GCM) ; le jeton de transaction n'y circule jamais.</li>
+  <li><strong>Le verdict n'est « accepté » qu'après confirmation par Qovi</strong> (à usage unique) et pour la même adresse que celle demandée.</li>
+  <li>Le service n'écoute que sur <code>127.0.0.1</code>, limite à <strong>5 demandes simultanées et 1 par adresse</strong>, coupe les clients lents et ne journalise ni clé ni jeton.</li>
+  <li>Il tourne sous un utilisateur dédié, sans privilège : sous Linux avec un système de fichiers en lecture seule (durcissement systemd) et une configuration en <code>0600</code> ; sous Windows sous le compte virtuel <code>NT SERVICE\QoviTuI</code>, la configuration n'étant lisible que par lui, SYSTEM et les administrateurs.</li>
+  <li>Prérequis : une horloge à l'heure (NTP), à ± 60 secondes.</li>
+  <li>Une faille ? Écrivez à <a href="mailto:security@qovi.ch">security@qovi.ch</a>.</li>
+</ul>
+</div>
+
+<h2>Structure du kit</h2>
+<div class="file-tree"><span class="dir">qovi-tui-kit/</span>
+├── README.html        <span class="note">ce document</span>
+├── LICENSE  NOTICE  CONTRIBUTING.md  SECURITY.md
+├── tui                <span class="note">client en 5 lignes de shell (exemple)</span>
+├── <span class="dir">c/</span>                 <span class="note">service, client, paquets .deb et .msi (C, OpenSSL)</span>
+│   ├── src/  test/  deb/  win/  Makefile  qovi-tui.conf.example
+└── <span class="dir">python/</span>            <span class="note">service et client de référence (Python 3)</span></div>
+
+<h2>Licence et contributions</h2>
+<p>Code publié sous <strong>Mozilla Public License 2.0</strong> (<code>SPDX-License-Identifier: MPL-2.0</code>, texte complet dans <code>LICENSE</code>). © 2026 Marc Gandar. <strong>Qovi</strong> est une marque de Marc Gandar : un projet dérivé ne peut pas porter ce nom.</p>
+<p>Les sources sont dans <a href="https://qovi.ch/awp/kits/qovi-tui-kit.zip">qovi-tui-kit.zip</a> ; le paquet <code>qovi-tui.deb</code> en est construit par <code>make deb</code>. Dépendances : OpenSSL (Apache-2.0, liée dynamiquement) ; pour le Python, <code>cryptography</code> (Apache-2.0 / BSD).</p>
+<p>Contributions bienvenues selon <code>CONTRIBUTING.md</code> (certificat d'origine DCO : ligne <code>Signed-off-by</code>). Logiciel fourni <strong>sans garantie</strong>.</p>
+
+</div>
+
+<footer>Qovi TuI · <a href="https://qovi.ch/tui/">qovi.ch/tui</a> · <a href="mailto:security@qovi.ch">security@qovi.ch</a></footer>
+</body>
+</html>

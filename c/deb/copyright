@@ -1,0 +1,9 @@
+Qovi TuI (qovi-tui) -- exemple d'integration de l'authentification Qovi
+Copyright (c) 2026 Marc Gandar
+Licence : Mozilla Public License 2.0 (SPDX-License-Identifier: MPL-2.0)
+          texte complet : https://mozilla.org/MPL/2.0/
+Qovi est une marque de Marc Gandar ; un projet derive ne peut pas porter ce nom.
+Sources : https://qovi.ch/awp/kits/qovi-tui-kit.zip
+Signaler une faille : security@qovi.ch
+Fourni sans garantie.
+Utilise OpenSSL (Apache License 2.0), lie dynamiquement (libssl3).

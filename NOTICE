@@ -1,0 +1,15 @@
+Qovi TuI (qovi-tui-kit)
+Copyright (c) 2026 Marc Gandar
+
+Ce kit est publie sous la Mozilla Public License 2.0 (voir LICENSE).
+SPDX-License-Identifier: MPL-2.0
+
+Qovi est une marque de Marc Gandar ; un projet derive ne peut pas porter ce nom.
+
+Composants tiers (non inclus dans ce depot, utilises a l'execution) :
+- OpenSSL (libssl, libcrypto) - Apache License 2.0 - lie dynamiquement sous Linux (paquet .deb),
+  integre (lien statique) aux .exe Windows (paquet .msi, qui fournit LICENSE-OpenSSL.txt).
+- cryptography (Python) - Apache License 2.0 ou BSD-3-Clause - utilise par le Python.
+
+Signaler une faille : security@qovi.ch
+Logiciel fourni sans garantie.

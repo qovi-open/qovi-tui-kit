@@ -1,0 +1,29 @@
+#!/bin/sh
+# SPDX-License-Identifier: MPL-2.0
+# qovi-tui postinst : utilisateur systeme, configuration 0600, service.
+set -e
+CONF=/etc/qovi-tui.conf
+case "$1" in
+configure)
+    getent group qovi-tui >/dev/null || groupadd --system qovi-tui
+    getent passwd qovi-tui >/dev/null || useradd --system --gid qovi-tui --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin qovi-tui
+    # la configuration n'est JAMAIS ecrasee (elle contient la cle du site)
+    if [ ! -e "$CONF" ]; then
+        install -m 600 -o qovi-tui -g qovi-tui /usr/share/qovi-tui/qovi-tui.conf.example "$CONF"
+    fi
+    chown qovi-tui:qovi-tui "$CONF"
+    chmod 600 "$CONF"
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload || true
+        systemctl enable qovi-tui.service >/dev/null 2>&1 || true
+        if grep -Eq '^[[:space:]]*prv_us[[:space:]]*=[[:space:]]*[0-9A-Fa-f]{64}[[:space:]]*$' "$CONF"; then
+            systemctl restart qovi-tui.service || true
+        fi
+    fi
+    if ! grep -Eq '^[[:space:]]*prv_us[[:space:]]*=[[:space:]]*[0-9A-Fa-f]{64}[[:space:]]*$' "$CONF"; then
+        echo "qovi-tui : renseignez la cle privee du site avec  sudo qovi-tui-setkey"
+        echo "           (serveur de test de Qovi : ajoutez  --api https://tst.qovi.ch/RST ; cle dans un fichier : --file <fichier>)"
+    fi
+    ;;
+esac
+exit 0

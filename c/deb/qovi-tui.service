@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Marc Gandar
+#
+# qovi-tui.service -- service TuI : detient la cle privee du site et ecoute
+# sur 127.0.0.1 (port de /etc/qovi-tui.conf, 7777 par defaut).
+# Sans cle renseignee, qovi-tuid s'arrete (code 3) et ne redemarre pas :
+# « sudo qovi-tui-setkey » renseigne la cle et le demarre.
+[Unit]
+Description=Qovi TuI - authentification Qovi pour applications locales
+Documentation=https://qovi.ch/tui/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=qovi-tui
+Group=qovi-tui
+ExecStart=/usr/sbin/qovi-tuid /etc/qovi-tui.conf
+Restart=on-failure
+RestartSec=5
+# 3 = configuration (cle absente ou fausse), 4 = usage : inutile de reessayer
+RestartPreventExitStatus=3 4
+UMask=0077
+
+# durcissement : le service ne fait que du reseau sortant + 127.0.0.1
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target

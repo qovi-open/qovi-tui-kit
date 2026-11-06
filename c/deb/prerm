@@ -1,0 +1,13 @@
+#!/bin/sh
+# SPDX-License-Identifier: MPL-2.0
+# qovi-tui prerm : arret du service avant retrait.
+set -e
+case "$1" in
+remove|deconfigure)
+    if [ -d /run/systemd/system ]; then
+        systemctl stop qovi-tui.service >/dev/null 2>&1 || true
+        systemctl disable qovi-tui.service >/dev/null 2>&1 || true
+    fi
+    ;;
+esac
+exit 0
